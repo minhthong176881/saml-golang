@@ -12,4 +12,6 @@ Options:
   - Browse to localhost:8000/hello
   
 - demo.go:
+  - Setup okta application
   - Run go run demo.go
+  - Browse to localhost:3001
