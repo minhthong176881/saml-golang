@@ -16,7 +16,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 )
 
-func main() {
+func mainDemo() {
 	// res, err := http.Get("http://idp.oktadev.com/metadata")
 	// if err != nil {
 	// 	panic(err)
@@ -68,15 +68,15 @@ func main() {
 	sp := &saml2.SAMLServiceProvider{
 		IdentityProviderSSOURL:      metadata.IDPSSODescriptor.SingleSignOnServices[0].Location,
 		IdentityProviderIssuer:      metadata.EntityID,
-		ServiceProviderIssuer:       "http://example.com/saml/acs/example",
-		AssertionConsumerServiceURL: "http://localhost:8080/v1/_saml_callback",
+		ServiceProviderIssuer:       "urn:example:idp",
+		AssertionConsumerServiceURL: "http://localhost:3001/msr/saml/auth",
 		SignAuthnRequests:           true,
-		AudienceURI:                 "http://example.com/saml/acs/example",
+		AudienceURI:                 "urn:example:idp",
 		IDPCertificateStore:         &certStore,
 		SPKeyStore:                  randomKeyStore,
 	}
 
-	http.HandleFunc("/v1/_saml_callback", func(rw http.ResponseWriter, req *http.Request) {
+	http.HandleFunc("/msr/saml/auth", func(rw http.ResponseWriter, req *http.Request) {
 		err := req.ParseForm()
 		if err != nil {
 			rw.WriteHeader(http.StatusBadRequest)
@@ -85,27 +85,35 @@ func main() {
 
 		assertionInfo, err := sp.RetrieveAssertionInfo(req.FormValue("SAMLResponse"))
 		if err != nil {
+			fmt.Println("here1")
 			fmt.Println(err)
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 
+		fmt.Printf("AssertionInfo: %+v\n", assertionInfo.WarningInfo)
+
 		if assertionInfo.WarningInfo.InvalidTime {
+			fmt.Println("Here2")
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		if assertionInfo.WarningInfo.NotInAudience {
+			fmt.Println("Here3")
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		fmt.Fprintf(rw, "NameID: %s\n", assertionInfo.NameID)
+		fmt.Printf("NameID: %s\n", assertionInfo.NameID)
 
 		fmt.Fprintf(rw, "Assertions:\n")
+		fmt.Println("Assertions:")
 
 		for key, val := range assertionInfo.Values {
 			fmt.Fprintf(rw, "  %s: %+v\n", key, val)
+			fmt.Printf("  %s: %+v\n", key, val)
 		}
 
 		fmt.Fprintf(rw, "\n")
@@ -125,7 +133,7 @@ func main() {
 	println("Supply:")
 	fmt.Printf("  SP ACS URL      : %s\n", sp.AssertionConsumerServiceURL)
 
-	err = http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":3001", nil)
 	if err != nil {
 		panic(err)
 	}
